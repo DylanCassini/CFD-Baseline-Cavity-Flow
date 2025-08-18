@@ -1,0 +1,17 @@
+# Core scientific computing
+numpy>=1.21.0
+matplotlib>=3.5.0
+scipy>=1.7.0
+
+# Finite Volume Method
+fipy>=3.4.0
+
+# Physics-Informed Neural Networks
+torch>=1.12.0
+torchvision>=0.13.0
+
+# Optional: for better performance
+# numba>=0.56.0
+
+# Development and utilities
+typing-extensions>=4.0.0

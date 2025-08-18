@@ -1,6 +1,6 @@
 # CFD Baseline: Lid-Driven Cavity Flow
 
-A comprehensive comparison of traditional and modern Computational Fluid Dynamics (CFD) methods for solving the classic lid-driven cavity flow problem. This project is relatively simple and mainly focused on basic implementation of these methods. That's because it's just for my personal coding practive.
+A comprehensive comparison of traditional and modern Computational Fluid Dynamics (CFD) methods for solving the classic lid-driven cavity flow problem. This project is relatively simple and mainly focused on basic implementation of these methods. That's because it's just for my personal coding practice.
 
 ## 🎯 Overview
 

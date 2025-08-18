@@ -1,13 +1,3 @@
-#!/usr/bin/env python3
-"""
-LBM D2Q9 — Lid-Driven Cavity Flow
-
-This script demonstrates the Lattice Boltzmann Method (LBM) for solving
-the lid-driven cavity flow problem using the unified utils.py module.
-
-You should see streamlines of the classic lid-driven cavity as it evolves.
-"""
-
 import numpy as np
 import matplotlib.pyplot as plt
 import sys

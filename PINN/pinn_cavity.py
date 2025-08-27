@@ -80,7 +80,7 @@ def train_pinn():
     xy_f = torch.tensor(np.hstack((x_f,y_f)), dtype=torch.float32).to(device)
 
     # Boundary points (walls)
-    N_b = 500
+    N_b = 1250
     # top lid (u=1,v=0)
     x_top = np.random.rand(N_b,1)
     y_top = np.ones((N_b,1))
@@ -119,9 +119,10 @@ def train_pinn():
         'iterations': []
     }
 
-    # Training loop
-    max_iter = 5000
-    print(f"Starting training for {max_iter} iterations...")
+    # Phase 1: Adam optimizer training
+    max_iter = 50000
+    is_converged = False
+    print(f"Starting Adam training for {max_iter} iterations...")
     
     for it in range(max_iter):
         optimizer.zero_grad()
@@ -150,6 +151,71 @@ def train_pinn():
         if it % 500 == 0:
             print(f"Iter {it:4d}, Loss={loss.item():.4e}, PDE={loss_f.item():.4e}, BC={loss_b.item():.4e}")
 
+        if (loss_f < 1e-3 and loss_b < 1e-3) and (it > 25000):
+            print(f"Preliminarily converged at iteration {it}")
+            break
+
+        if (loss_f < 1e-7 and loss_b < 1e-7):
+            print(f"Converged at iteration {it}")
+            is_converged = True
+            break
+    
+    # Phase 2: L-BFGS optimizer training (if not converged)
+    if not is_converged:
+        print("\nSwitching to L-BFGS optimizer for fine-tuning...")
+        optimizer_lbfgs = torch.optim.LBFGS(net.parameters(), max_iter=10000, lr=1.0, history_size=50, tolerance_grad=1e-9)
+        
+        # Define closure function for L-BFGS
+        def closure():
+            optimizer_lbfgs.zero_grad()
+            f_cont, f_u, f_v = navier_stokes_residual(xy_f, net, nu)
+            loss_f = (f_cont**2).mean() + (f_u**2).mean() + (f_v**2).mean()
+            out_b = net(xy_b)
+            u_pred, v_pred = out_b[:,0:1], out_b[:,1:2]
+            loss_b = ((u_pred - u_b)**2).mean() + ((v_pred - v_b)**2).mean()
+            loss = loss_f + loss_b
+            loss.backward()
+            
+            # Store current losses for history tracking
+            closure.loss_f = loss_f.item()
+            closure.loss_b = loss_b.item()
+            closure.total_loss = loss.item()
+            
+            return loss
+        
+        # L-BFGS training loop
+        lbfgs_iter = 0
+        max_lbfgs_iter = 500
+        
+        for lbfgs_step in range(max_lbfgs_iter):
+            # Perform L-BFGS step
+            optimizer_lbfgs.step(closure)
+            
+            # Update iteration counter
+            current_iter = max_iter + lbfgs_step
+            
+            # Store training history every 10 iterations
+            if lbfgs_step % 5 == 0:
+                history['total_loss'].append(closure.total_loss)
+                history['pde_loss'].append(closure.loss_f)
+                history['bc_loss'].append(closure.loss_b)
+                history['iterations'].append(current_iter)
+            
+            # Print progress every 10 iterations
+            if lbfgs_step % 10 == 0:
+                print(f"L-BFGS Iter {lbfgs_step:4d}, Loss={closure.total_loss:.4e}, PDE={closure.loss_f:.4e}, BC={closure.loss_b:.4e}")
+            
+            # Check convergence
+            if (closure.loss_f < 1e-7 and closure.loss_b < 1e-7):
+                print(f"Converged at L-BFGS iteration {lbfgs_step}")
+                is_converged = True
+                break
+        
+        if is_converged:
+            print("Training converged successfully!")
+        else:
+            print("Training completed without full convergence.")
+    
     print("Training completed!")
     return net, history
 
@@ -158,7 +224,7 @@ def train_pinn():
 # Visualization Functions
 # -------------------------------
 
-def plot_training_history(history, save_dir="PINN/Result Plot"):
+def plot_training_history(history, save_dir="Result Plot"):
     """Plot training loss history"""
     os.makedirs(save_dir, exist_ok=True)
     
